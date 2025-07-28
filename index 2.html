@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Тендерный калькулятор</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      font-size: 16px;
+      background-color: #f9f9f9;
+    }
+    label {
+      display: block;
+      margin: 12px 0 4px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      font-size: 1em;
+    }
+    .tooltip {
+      display: inline-block;
+      position: relative;
+      cursor: pointer;
+      color: #007bff;
+    }
+    .tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 0;
+      bottom: -1.8em;
+      background: #333;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #subscribe-message {
+      color: red;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="display: none;">
+    <h2>Тендерный калькулятор</h2>
+
+    <label for="nmck">НМЦК:
+      <span class="tooltip" data-tooltip="Начальная максимальная цена контракта">[?]</span>
+    </label>
+    <input type="number" id="nmck" placeholder="Например, 1000000" />
+
+    <label for="costs">Собственные затраты:
+      <span class="tooltip" data-tooltip="Все издержки: материалы, зарплаты, аренда, налоги и прочее">[?]</span>
+    </label>
+    <input type="number" id="costs" placeholder="Например, 800000" />
+
+    <label for="price">Предлагаемая цена:
+      <span class="tooltip" data-tooltip="Цена, которую вы готовы предложить заказчику">[?]</span>
+    </label>
+    <input type="number" id="price" placeholder="Например, 900000" />
+
+    <button onclick="calculate()">Рассчитать</button>
+    <div id="result"></div>
+  </div>
+
+  <div id="subscribe-message" style="display: none;">
+    Подпишитесь на канал @tenderplan, чтобы использовать калькулятор.
+  </div>
+
+  <script>
+    async function checkSubscription(userId) {
+      const res = await fetch(`https://tendercalc-backend.onrender.com/check-subscription?user_id=${userId}`);
+      const data = await res.json();
+      return data.subscribed;
+    }
+
+    async function init() {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      const user = tg.initDataUnsafe?.user;
+      if (!user?.id) {
+        document.getElementById("subscribe-message").innerText = "Ошибка получения данных пользователя.";
+        document.getElementById("subscribe-message").style.display = "block";
+        return;
+      }
+
+      const subscribed = await checkSubscription(user.id);
+      if (subscribed) {
+        document.getElementById("app").style.display = "block";
+      } else {
+        document.getElementById("subscribe-message").style.display = "block";
+      }
+    }
+
+    function calculate() {
+      const nmck = parseFloat(document.getElementById("nmck").value);
+      const costs = parseFloat(document.getElementById("costs").value);
+      const price = parseFloat(document.getElementById("price").value);
+
+      if (isNaN(nmck) || isNaN(costs) || isNaN(price)) {
+        document.getElementById("result").innerText = "Заполните все поля корректно.";
+        return;
+      }
+
+      const profit = price - costs;
+      const margin = ((profit / costs) * 100).toFixed(2);
+      const reduction = (((nmck - price) / nmck) * 100).toFixed(2);
+      document.getElementById("result").innerText = `Прибыль: ${profit.toLocaleString('ru-RU')}₽, Рентабельность: ${margin}%, Снижение цены: ${reduction}%`;
+    }
+
+    init();
+  </script>
+</body>
+</html>
